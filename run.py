@@ -252,14 +252,14 @@ def compute_color(u, v):
 
 
 def plot_optical_flows():
-	dir = "./frames/"
+	dir = "/usr/project/xtmp/vrsick/code/vid2jpgs/vid1frames/"
 	optical_flow = []
-	for i in range(1500):
+	for i in range(1,5):
 		tensorFirst = torch.FloatTensor(
-			np.array(PIL.Image.open(dir+"frame" + str(i) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32)
+			np.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i)))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32)
 			* (1.0 / 255.0))
 		tensorSecond = torch.FloatTensor(
-			numpy.array(PIL.Image.open(dir+"frame" + str(i+1) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (
+			numpy.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i+1)))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (
 			1.0 / 255.0))
 
 		tensorOutput = estimate(tensorFirst, tensorSecond)
