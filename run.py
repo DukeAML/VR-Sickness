@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-
+import argparse
 import torch
 from scipy.misc import imsave, imread
 import matplotlib.pyplot as plt
 import getopt
 import numpy as np
 import math
-import numpy
 import os
 import PIL
 import PIL.Image
 import sys
+from video_processing import frame_capture
+
 
 ##########################################################
 
@@ -27,11 +28,17 @@ arguments_strFirst = './images/first.png'
 arguments_strSecond = './images/second.png'
 arguments_strOut = './out.flo'
 
-for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
-	if strOption == '--model' and strArgument != '': arguments_strModel = strArgument # which model to use, see below
-	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
-	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
-	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
+parser = argparse.ArgumentParser()
+parser.add_argument('-gpuid', nargs=1, type=str, default='0')  # python3 main.py -gpuid=1,2,3
+args = parser.parse_args()
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpuid[0]
+print(os.environ['CUDA_VISIBLE_DEVICES'])
+#
+# for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
+# 	if strOption == '--model' and strArgument != '': arguments_strModel = strArgument # which model to use, see below
+# 	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
+# 	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
+# 	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
 # end
 
 ##########################################################
@@ -251,23 +258,27 @@ def compute_color(u, v):
 	return img
 
 
-def plot_optical_flows():
-	dir = "./frames/"
+def plot_optical_flows(video, cap):
+	dir = video + "_frames/"
 	optical_flow = []
-	for i in range(1500):
+	for i in range(cap):
 		tensorFirst = torch.FloatTensor(
-			np.array(PIL.Image.open(dir+"frame" + str(i) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32)
+			np.array(PIL.Image.open(dir+"frame" + str(i) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32)
 			* (1.0 / 255.0))
 		tensorSecond = torch.FloatTensor(
-			numpy.array(PIL.Image.open(dir+"frame" + str(i+1) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (
+			np.array(PIL.Image.open(dir+"frame" + str(i+1) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32) * (
 			1.0 / 255.0))
 
 		tensorOutput = estimate(tensorFirst, tensorSecond)
 		tensorOutput = tensorOutput.numpy()
 		optical_flow.append(np.sum(abs(tensorOutput)))
-		print("successfully finished frame ", i)
+		if i % 100==0:
+			print("finished frame " + str(i) + " video " + video)
 	plt.plot(optical_flow)
 	plt.savefig("flow_chart.png")
+	with open(video + "_log.txt", "w") as f:
+		f.write("The sum of optical flow is" + str(sum(optical_flow)))
+		f.write("There are " + str(cap) + " frames in total")
 
 
 
@@ -289,5 +300,13 @@ if __name__ == '__main__':
 	# print("sum is", np.sum(img))
 	# imsave("./test.png", img)
 #	imsave("./test2.png", tensorOutput[1])
-	plot_optical_flows()
+
+	video_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/videos/"
+	for root, dirs, files in os.walk(video_dir):
+		for file in files:
+			path = os.path.join(root, file)
+			video = file[:-4]
+			count = frame_capture(path, video)
+			print("Finished capturing frames")
+			plot_optical_flows(video, count)
 
