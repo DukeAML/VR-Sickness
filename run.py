@@ -2,6 +2,7 @@
 
 import torch
 from scipy.misc import imsave, imread
+import matplotlib.pyplot as plt
 import getopt
 import numpy as np
 import math
@@ -100,8 +101,6 @@ class Network(torch.nn.Module):
 	# end
 
 	def forward(self, tensorFirst, tensorSecond):
-		tensorFlow = []
-
 		tensorFirst = [ self.modulePreprocess(tensorFirst) ]
 		tensorSecond = [ self.modulePreprocess(tensorSecond) ]
 
@@ -130,7 +129,6 @@ class Network(torch.nn.Module):
 moduleNetwork = Network().cuda().eval()
 
 ##########################################################
-
 def estimate(tensorFirst, tensorSecond):
 	assert(tensorFirst.size(1) == tensorSecond.size(1))
 	assert(tensorFirst.size(2) == tensorSecond.size(2))
@@ -210,65 +208,86 @@ def make_color_wheel():
 
 
 def compute_color(u, v):
-    """
+	"""
     compute optical flow color map
     :param u: optical flow horizontal map
     :param v: optical flow vertical map
     :return: optical flow in color code
     """
-    [h, w] = u.shape
-    img = np.zeros([h, w, 3])
-    nanIdx = np.isnan(u) | np.isnan(v)
-    u[nanIdx] = 0
-    v[nanIdx] = 0
+	[h, w] = u.shape
+	img = np.zeros([h, w, 3])
+	nanIdx = np.isnan(u) | np.isnan(v)
+	u[nanIdx] = 0
+	v[nanIdx] = 0
 
-    colorwheel = make_color_wheel()
-    ncols = np.size(colorwheel, 0)
+	colorwheel = make_color_wheel()
+	ncols = np.size(colorwheel, 0)
 
-    rad = np.sqrt(u**2+v**2)
+	rad = np.sqrt(u**2+v**2)
 
-    a = np.arctan2(-v, -u) / np.pi
+	a = np.arctan2(-v, -u) / np.pi
 
-    fk = (a+1) / 2 * (ncols - 1) + 1
+	fk = (a+1) / 2 * (ncols - 1) + 1
 
-    k0 = np.floor(fk).astype(int)
+	k0 = np.floor(fk).astype(int)
 
-    k1 = k0 + 1
-    k1[k1 == ncols+1] = 1
-    f = fk - k0
+	k1 = k0 + 1
+	k1[k1 == ncols+1] = 1
+	f = fk - k0
 
-    for i in range(0, np.size(colorwheel,1)):
-        tmp = colorwheel[:, i]
-        col0 = tmp[k0-1] / 255
-        col1 = tmp[k1-1] / 255
-        col = (1-f) * col0 + f * col1
+	for i in range(0, np.size(colorwheel,1)):
+		tmp = colorwheel[:, i]
+		col0 = tmp[k0-1] / 255
+		col1 = tmp[k1-1] / 255
+		col = (1-f) * col0 + f * col1
 
-        idx = rad <= 1
-        col[idx] = 1-rad[idx]*(1-col[idx])
-        notidx = np.logical_not(idx)
+		idx = rad <= 1
+		col[idx] = 1-rad[idx]*(1-col[idx])
+		notidx = np.logical_not(idx)
 
-        col[notidx] *= 0.75
-        img[:, :, i] = np.uint8(np.floor(255 * col*(1-nanIdx)))
+		col[notidx] *= 0.75
+		img[:, :, i] = np.uint8(np.floor(255 * col*(1-nanIdx)))
 
-    return img
+	return img
 
+
+def plot_optical_flows():
+	dir = "./frames/"
+	optical_flow = []
+	for i in range(1500):
+		tensorFirst = torch.FloatTensor(
+			np.array(PIL.Image.open(dir+"frame" + str(i) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32)
+			* (1.0 / 255.0))
+		tensorSecond = torch.FloatTensor(
+			numpy.array(PIL.Image.open(dir+"frame" + str(i+1) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (
+			1.0 / 255.0))
+
+		tensorOutput = estimate(tensorFirst, tensorSecond)
+		tensorOutput = tensorOutput.numpy()
+		optical_flow.append(np.sum(abs(tensorOutput)))
+		print("successfully finished frame ", i)
+	plt.plot(optical_flow)
+	plt.savefig("flow_chart.png")
 
 
 
 if __name__ == '__main__':
-	tensorFirst = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strFirst))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
-	tensorSecond = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strSecond))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
-
-	tensorOutput = estimate(tensorFirst, tensorSecond)
-	# objectOutput = open(arguments_strOut, 'wb')
+	# tensorFirst = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strFirst))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
+	# tensorSecond = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strSecond))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
+    #
+	# tensorOutput = estimate(tensorFirst, tensorSecond)
+	# tensorOutput = tensorOutput.numpy()
+	# print(np.sum(tensorOutput))
+	# # objectOutput = open(arguments_strOut, 'wb')
     #
 	# numpy.array([ 80, 73, 69, 72 ], numpy.uint8).tofile(objectOutput)
 	# numpy.array([ tensorOutput.size(2), tensorOutput.size(1) ], numpy.int32).tofile(objectOutput)
 	# numpy.array(tensorOutput.numpy().transpose(1, 2, 0), numpy.float32).tofile(objectOutput)
     #
 	# objectOutput.close()
-	img = compute_color(tensorOutput[0].numpy(), tensorOutput[1].numpy())
-	imsave("./test.png", img)
+	# img = compute_color(tensorOutput[0], tensorOutput[1])
+	# print("sum is", np.sum(img))
+	# imsave("./test.png", img)
 #	imsave("./test2.png", tensorOutput[1])
-
+	plot_optical_flows()
 
