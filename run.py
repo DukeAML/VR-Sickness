@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-
+import argparse
 import torch
 from scipy.misc import imsave, imread
 import matplotlib.pyplot as plt
 import getopt
 import numpy as np
 import math
-import numpy
 import os
 import PIL
 import PIL.Image
 import sys
+from video_processing import frame_capture
+
 
 ##########################################################
 
@@ -26,12 +27,12 @@ arguments_strModel = 'sintel-final'
 arguments_strFirst = './images/first.png'
 arguments_strSecond = './images/second.png'
 arguments_strOut = './out.flo'
-
-for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
-	if strOption == '--model' and strArgument != '': arguments_strModel = strArgument # which model to use, see below
-	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
-	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
-	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
+#
+# for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
+# 	if strOption == '--model' and strArgument != '': arguments_strModel = strArgument # which model to use, see below
+# 	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
+# 	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
+# 	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
 # end
 
 ##########################################################
@@ -251,23 +252,31 @@ def compute_color(u, v):
 	return img
 
 
-def plot_optical_flows():
-	dir = "/usr/project/xtmp/vrsick/code/vid2jpgs/vid1frames/"
+def plot_optical_flows(framedir, startframe, endframe, savepath):
+	dir = framedir
 	optical_flow = []
-	for i in range(1,5):
+	for i in range(startframe,endframe):
 		tensorFirst = torch.FloatTensor(
-			np.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i)))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32)
+			np.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i)))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32)
 			* (1.0 / 255.0))
 		tensorSecond = torch.FloatTensor(
-			numpy.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i+1)))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (
+			np.array(PIL.Image.open(dir + "{0:05d}.jpg".format(i+1)))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32) * (
 			1.0 / 255.0))
 
 		tensorOutput = estimate(tensorFirst, tensorSecond)
 		tensorOutput = tensorOutput.numpy()
 		optical_flow.append(np.sum(abs(tensorOutput)))
-		print("successfully finished frame ", i)
+		if i % 100==0:
+			print("finished frame " + str(i) + " from " + framedir)
 	plt.plot(optical_flow)
-	plt.savefig("flow_chart.png")
+	plt.savefig(savepath + "_flowplot.png")
+	with open(savepath + "_log.txt", "w") as f:
+		f.write("The sum of optical flow is " + str(sum(optical_flow)) + "\n" )
+		f.write("The starting frame number is " + str(startframe) + "\n" )
+		f.write("The ending frame number is " + str(endframe) + "\n" )
+		f.write("There are " + str(endframe-startframe) + " frames in total")
+	optical_flow = np.asarray(optical_flow)
+	np.save(savepath + ".npy", optical_flow)
 
 
 
@@ -289,5 +298,25 @@ if __name__ == '__main__':
 	# print("sum is", np.sum(img))
 	# imsave("./test.png", img)
 #	imsave("./test2.png", tensorOutput[1])
-	plot_optical_flows()
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-gpuid', nargs=1, type=str, default='0')  # python3 main.py -gpuid=1,2,3
+  parser.add_argument("--pathIn", help="path to frame directory")
+  parser.add_argument("--pathOut", help="path and prefix to save ouputs")
+  parser.add_argument("--sframe", type=int, help="start frame")
+  parser.add_argument("--eframe", type=int, help="end frame")
+  args = parser.parse_args()
+  os.environ['CUDA_VISIBLE_DEVICES'] = args.gpuid[0]
+  print(os.environ['CUDA_VISIBLE_DEVICES'])
+
+  plot_optical_flows(args.pathIn, args.sframe, args.eframe, args.pathOut)
+
+#	video_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/videos/"
+#	for root, dirs, files in os.walk(video_dir):
+#		for file in files:
+#			path = os.path.join(root, file)
+#			video = file[:-4]
+#			count = frame_capture(path, video)
+#			print("Finished capturing frames")
+#			plot_optical_flows(video, count)
 

@@ -1,0 +1,6 @@
+.nfs*
+*frames/
+/comparison/
+*.mp4
+/__pycache__/
+*.png
