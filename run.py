@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import argparse
 import torch
-from scipy.misc import imsave, imread
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import imsave, imread
 import getopt
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import math
 import os
@@ -260,8 +262,14 @@ def compute_color(u, v):
 
 def plot_optical_flows(video, cap):
 	dir = video + "_frames/"
+	heatmap_dir = video+"_heatmaps/"
+	optical_flow_dir = video + "_optical_flow/"
+	if not os.path.exists(heatmap_dir):
+		os.mkdir(heatmap_dir)
+	if not os.path.exists(optical_flow_dir):
+		os.mkdir(optical_flow_dir)
 	optical_flow = []
-	for i in range(cap):
+	for i in range(5,cap-5):
 		tensorFirst = torch.FloatTensor(
 			np.array(PIL.Image.open(dir+"frame" + str(i) + ".jpg"))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32)
 			* (1.0 / 255.0))
@@ -271,14 +279,20 @@ def plot_optical_flows(video, cap):
 
 		tensorOutput = estimate(tensorFirst, tensorSecond)
 		tensorOutput = tensorOutput.numpy()
-		optical_flow.append(np.sum(abs(tensorOutput)))
+		np.save(optical_flow_dir + str(i), tensorOutput)
+		#img = compute_color(tensorOutput[0], tensorOutput[1])
+		#optical_flow.append(np.linalg.norm([np.sum(tensorOutput[0]), np.sum(tensorOutput[1])]))
+	#	imsave(heatmap_dir + str(i) + ".png", img)
 		if i % 100==0:
-			print("finished frame " + str(i) + " video " + video)
-	plt.plot(optical_flow)
-	plt.savefig("flow_chart.png")
-	with open(video + "_log.txt", "w") as f:
-		f.write("The sum of optical flow is" + str(sum(optical_flow)))
-		f.write("There are " + str(cap) + " frames in total")
+			print("finished comparing frame " + str(i) + " video " + video)
+
+	# plt.close()
+	# plt.plot(optical_flow)
+	# np.save("numpy_"+video, optical_flow)
+	# plt.savefig("flow_chart_" + video)
+	# with open("log_" + video + ".txt", "w") as f:
+	# 	f.write("The sum of optical flow is  " + str(sum(optical_flow)))
+	# 	f.write("  There are " + str(cap) + " frames in total")
 
 
 
@@ -301,12 +315,18 @@ if __name__ == '__main__':
 	# imsave("./test.png", img)
 #	imsave("./test2.png", tensorOutput[1])
 
-	video_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/videos/"
-	for root, dirs, files in os.walk(video_dir):
-		for file in files:
-			path = os.path.join(root, file)
-			video = file[:-4]
-			count = frame_capture(path, video)
-			print("Finished capturing frames")
-			plot_optical_flows(video, count)
+	# video_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/videos/"
+	# for root, dirs, files in os.walk(video_dir):
+	# 	for file in files:
+	# 		path = os.path.join(root, file)
+	# 		video = file[:-4]
+	# 		if os.path.exists("numpy_" + video+".npy"):
+	# 			print("continue")
+	# 			continue
+	# 		count = frame_capture(path, video)
+	# 		print("Finished capturing frames, there are ", count, " frames in total for ", video)
+	# 		plot_optical_flows(video, count)
+
+	skyhouse_frames = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/skyhouse_frames/"
+	plot_optical_flows("skyhouse", 1802)
 

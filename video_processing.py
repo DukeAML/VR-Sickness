@@ -6,12 +6,16 @@ import os
 # Function to extract frames
 def frame_capture(path, video):
     # Path to video file
+    print("Start capturing frames for ", video)
     vidObj = cv2.VideoCapture(path)
 
     # Used as counter variable
     count = 0
     if not os.path.exists(video+"_frames"):
         os.mkdir(video+"_frames")
+    else:
+        print("did frame capture before")
+        return len(os.listdir(video + "_frames"))
     # checks whether frames were extracted
     success = 1
 
@@ -25,7 +29,7 @@ def frame_capture(path, video):
 
         count += 1
         if count % 100 == 0:
-            print("finished frame "+ str(count) + " video " + video)
+            print("finished capturing frame "+ str(count) + " video " + video)
 
     return count
 
