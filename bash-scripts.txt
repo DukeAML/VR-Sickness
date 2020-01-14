@@ -1,0 +1,49 @@
+
+
+## to normalize vids by fps, they all now have 25 fps
+INPUT_FOLDER=original_videos
+OUTPUT_FOLDER=1-normalized-videos
+for i in ${INPUT_FOLDER}/*.mp4;
+  do
+  name=$(basename $i)
+  echo "${OUTPUT_FOLDER}/${name}"
+  ffmpeg -i $i -filter:v fps=fps=25 "${OUTPUT_FOLDER}/${name}"
+done
+
+## to generate jpegs
+INPUT_FOLDER=1-normalized-videos
+OUTPUT_FOLDER=2-jpegs
+for i in ${INPUT_FOLDER}/*.mp4;
+  do
+  name=$(basename $i)
+  name=$(echo "$name" | cut -f 1 -d '.')
+  new_folder="${OUTPUT_FOLDER}/${name}"
+  mkdir $new_folder
+  ffmpeg -i $i "$new_folder/$name%05d.jpeg"
+done
+
+## scaling video size down
+
+INPUT_FOLDER=1-normalized-videos
+OUTPUT_FOLDER=3-scaled-down-videos
+for i in ${INPUT_FOLDER}/*.mp4;
+  do
+  name=$(basename $i)
+  echo "${OUTPUT_FOLDER}/${name}"
+  ffmpeg -i $i -vf scale=640:-1 "${OUTPUT_FOLDER}/${name}"
+done
+
+## generating jpegs for the scaled-down videos
+  INPUT_FOLDER=3-scaled-down-videos
+  OUTPUT_FOLDER=4-scaled-down-jpegs
+  for i in ${INPUT_FOLDER}/*.mp4;
+    do
+    name=$(basename $i)
+    name=$(echo "$name" | cut -f 1 -d '.')
+    new_folder="${OUTPUT_FOLDER}/${name}"
+    mkdir $new_folder
+    ffmpeg -i $i "$new_folder/$name%05d.jpeg"
+  done
+
+
+
