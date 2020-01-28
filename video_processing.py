@@ -25,7 +25,7 @@ def frame_capture(path, video):
         success, image = vidObj.read()
 
         # Saves the frames with frame-count
-        cv2.imwrite(video + "_frames/frame%d.jpg" % count, image)
+        cv2.imwrite(video + "_frames/" + video+"%05d.jpeg" % count, image)
 
         count += 1
         if count % 100 == 0:
