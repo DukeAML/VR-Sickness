@@ -2,151 +2,83 @@ import numpy as np
 import math
 from video_processing import frame_capture
 import os
+import time
 
 
-def degree_pixel(image_shape, width=55/360, height=113/360):
+def degree_pixel(image_shape, width=55/360, height=113/180):
+    # return height, width, dh, dw in pixel
     return math.ceil(image_shape[0]/2 * height), math.ceil(image_shape[1] * width), \
-           math.ceil(55/360 * image_shape[0]/2), math.ceil(image_shape[1] * 25/360)
+           math.ceil(1/180 * image_shape[0]/2), math.ceil(image_shape[1] * 5/360)
 
-def main():
-    print("main started")
-    for root, dirs, files in os.walk("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/"):
-        for dir in dirs:
-            if dir == "sum_of_norms_without_filter" or dir == "average_of_norms_without_filter":
-                continue
-            else:
-                path = os.path.join("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/", dir)
-                save_path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/7-boxed-of/"
-                if not os.path.exists(save_path + dir + "/"):
-                    os.makedirs(save_path + dir + "/")
-                arr = np.load(path + "/10" + ".npy")
-                arr_shape = [arr.shape[1], arr.shape[2]]
-                height, width, dh, dw = degree_pixel(arr_shape)
-                print(height, width, dh, dw)
-                print(arr_shape)
-                for a in range(0, arr_shape[0] - height, dh):
-                    for b in range(0, arr_shape[1] - width, dw):
-                        ab = np.zeros(shape=(1493, 2, height, width))
-                        for i in range(5, 1498):
-                            arr = np.load(path + "/" + str(i) + ".npy")
-                            ab[i-5] = arr[:, a:a+height, b:b+width]
-                            if i%100 == 0:
-                                print(i)
-                        np.save(save_path + dir + "/starting_at_row_" + str(a) + "_col_" + str(b), ab)
-                        print("done saving box for ", str(a),str(b))
-                print("done for video")
-
-def individual(video_dir, video_name):
-    # count = frame_capture(video_dir, video_name)
-    # save_numpy("./"+ video_name + "_frames/", video_name, "./temp/", count)
-    # path = "./temp/"
-    path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/gardens/"
-    save_path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/individual_boxed/"
-
-    if not os.path.exists(save_path + video_name + "/"):
-        os.makedirs(save_path + video_name + "scaled_down/")
-    arr = np.load(path + "10" + ".npy")
+def one_eye_box_cropping(arr, height, width, dh, dw, big_dict, frame_count, i, right=False):
     arr_shape = [arr.shape[1], arr.shape[2]]
-    height, width, dh, dw = degree_pixel(arr_shape)
-    for a in range(0, arr_shape[0] - height, dh):
-        for b in range(0, arr_shape[1] - width, dw):
-            ab = np.zeros(shape=(1797-5, 2, height, width))
-            for i in range(5, 1797-5):
-                arr = np.load(path + "/" + str(i) + ".npy")
-                ab[i - 5] = arr[:, a:a + height, b:b + width]
-                if i % 100 == 0:
-                    print(i)
-            np.save(save_path + video_name + "/starting_at_row_" + str(a) + "_col_" + str(b), ab)
-            print("done saving box for ", str(a), str(b))
-    print("done for ", video_name)
-
-
-def calc_majority_avg(arr):
-    count_p, count_n = 0, 0
-    sum_p, sum_n = 0, 0
-    assert(len(arr.shape) == 2)
-    for i in range(arr.shape[0]):
-        for j in range(arr.shape[1]):
-            if arr[i,j] > 0:
-                count_p += 1
-                sum_p += arr[i, j]
+    for a in range(0, arr_shape[0], dh):
+        for b in range(0, arr_shape[1], dw):
+            if right:
+                a_, b_ = a + arr_shape[0], b + arr_shape[1]
             else:
-                count_n += 1
-                sum_n += arr[i, j]
-    if count_n > count_p:
-        return sum_n / count_n
-    else:
-        return sum_p / count_p
-
-
-def main_average():
-    print("main average started")
-    for root, dirs, files in os.walk("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/"):
-        for dir in dirs:
-            if dir == "sum_of_norms_without_filter" or dir == "average_of_norms_without_filter":
-                continue
+                a_, b_ = a, b
+            if (a_,b_) in big_dict:  
+                ab = big_dict[(a_, b_)]
             else:
-                path = os.path.join("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/", dir)
-                save_path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/8-boxed-of-average-majority/"
-                if not os.path.exists(save_path + dir + "/"):
-                    os.makedirs(save_path + dir + "/")
-                arr = np.load(path + "/10" + ".npy")
-                arr_shape = [arr.shape[1], arr.shape[2]]
-                height, width, dh, dw = degree_pixel(arr_shape)
-                for a in range(0, arr_shape[0] - height, dh):
-                    for b in range(0, arr_shape[1] - width, dw):
-                        ab = np.zeros(shape=(1493, 2, 1))
-                        for i in range(5, 1498):
-                            arr = np.load(path + "/" + str(i) + ".npy")
-                            box_1 = arr[0, a:a + height, b:b + width]
-                            box_2 = arr[1, a:a + height, b:b + width]
-                            ab[i - 5][0] = calc_majority_avg(box_1)
-                            ab[i - 5][1] = calc_majority_avg(box_2)
-                            if i%100 == 0:
-                                print(i)
-                        np.save(save_path + dir + "/starting_at_row_" + str(a) + "_col_" + str(b), ab)
-                        print("done saving box for ", str(a),str(b))
-                print("done for video")
+                ab = np.zeros(shape=(frame_count, 1))
+            current_sum_x, current_sum_y = 0, 0
+            if a < height//2 and b < width //2:
+                current_sum_x += np.sum(arr[0, a - height // 2 :, b - width // 2 :])
+                current_sum_y += np.sum(arr[1, a - height // 2 :, b - width // 2 :])
+            elif a < height // 2 and b > arr_shape[1] - math.ceil(width/2):
+                current_sum_x += np.sum(arr[0, a - height // 2 :, : b + math.ceil(width/2) - arr_shape[1]])
+                current_sum_y += np.sum(arr[1, a - height // 2 :, : b + math.ceil(width/2) - arr_shape[1]])
+            elif a > arr_shape[0] - math.ceil(height/2) and b < width//2:
+                current_sum_x += np.sum(arr[0, :a + math.ceil(height/2) - arr_shape[0], b - width//2:])
+                current_sum_y += np.sum(arr[1, :a + math.ceil(height/2) - arr_shape[0], b - width//2:])
+            elif a > arr_shape[0] - math.ceil(height/2) and b > arr_shape[1] - math.ceil(width/2):
+                current_sum_x += np.sum(arr[0, :a + math.ceil(height/2) - arr_shape[0], : b + math.ceil(width/2) - arr_shape[1]])
+                current_sum_y += np.sum(arr[1, :a + math.ceil(height/2) - arr_shape[0], : b + math.ceil(width/2) - arr_shape[1]])
+            elif a < height // 2:
+                current_sum_x += np.sum(arr[0, a - height // 2 :, b - width // 2 : b + math.ceil(width/2)])
+                current_sum_y += np.sum(arr[1, a - height // 2 :, b - width // 2 : b + math.ceil(width/2)])
+            elif a > arr_shape[0] - math.ceil(height/2):
+                current_sum_x += np.sum(arr[0, :a + math.ceil(height/2) - arr_shape[0], b - width // 2 : b + math.ceil(width/2)])
+                current_sum_y += np.sum(arr[1, :a + math.ceil(height/2) - arr_shape[0], b - width // 2 : b + math.ceil(width/2)])
+            elif b < width // 2:
+                current_sum_x += np.sum(arr[0, a - height //2 : a + math.ceil(height/2), b - width // 2 :])
+                current_sum_y += np.sum(arr[1, a - height //2 : a + math.ceil(height/2), b - width // 2 :])
+            elif b > arr_shape[1] - math.ceil(width/2):
+                current_sum_x += np.sum(arr[0, a - height //2 : a + math.ceil(height/2), : b + math.ceil(width/2) - arr_shape[1]])
+                current_sum_y += np.sum(arr[1, a - height //2 : a + math.ceil(height/2), : b + math.ceil(width/2) - arr_shape[1]])
+            current_sum_x += np.sum(arr[0, max(a - height //2, 0) : min(a + math.ceil(height/2), arr_shape[0]), max(b - width // 2, 0) : min(arr_shape[1], b + math.ceil(width/2))])
+            current_sum_y += np.sum(arr[1, max(a - height //2, 0) : min(a + math.ceil(height/2), arr_shape[0]), max(b - width // 2, 0) : min(arr_shape[1], b + math.ceil(width/2))])
+            m1, m2 = current_sum_x/(height * width), current_sum_y / (height * width)
+            ab[i][0] = math.sqrt(m1 **2 + m2**2)
+            big_dict[(a_, b_)] = ab
 
-def individual_avg(video_name):
-    path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/individual/gardens/"
-    #path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/6-numpy-holder/gardens/"
-    save_path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/individual_boxed_avg/"
-    #
-    # if not os.path.exists(save_path + video_name + "scaled_down/"):
-    #     os.makedirs(save_path + video_name + "scaled_down/")
+
+def individual_avg(video_name, path, save_path, frame_count):
     if not os.path.exists(save_path + video_name + "/"):
         os.makedirs(save_path + video_name + "/")
     arr = np.load(path + "10" + ".npy")
-    arr_shape = [arr.shape[1], arr.shape[2]]
+    arr_shape = [arr.shape[1], arr.shape[2]] 
     height, width, dh, dw = degree_pixel(arr_shape)
-    count = 0
 
-    for a in range(0, arr_shape[0] - height, dh):
-        for b in range(0, arr_shape[1] - width, dw):
-            count += 1
-
-    vid_num = 0
-    for a in range(0, arr_shape[0] - height, dh):
-        for b in range(0, arr_shape[1] - width, dw):
-            # 1502 1797
-            ab = np.zeros(shape=(1797-10, 2, 1))
-            for i in range(5, 1797-5):
-                arr = np.load(path + "/" + str(i) + ".npy")
-                box_1 = arr[0, a:a + height, b:b + width]
-                box_2 = arr[1, a:a + height, b:b + width]
-                ab[i - 5][0] = calc_majority_avg(box_1)
-                ab[i - 5][1] = calc_majority_avg(box_2)
-            #np.save(save_path + video_name + "scaled_down/starting_at_row_" + str(a) + "_col_" + str(b), ab)
-            np.save(save_path + video_name + "/starting_at_row_" + str(a) + "_col_" + str(b), ab)
-            print("done saving box for ", str(a), str(b))
-            vid_num += 1
-            print("done ", vid_num/count)
+    big_dict = {}
+    for i in range(1, frame_count): 
+        arr = np.load(path + str(i) + ".npy")
+        one_eye_box_cropping(arr=arr[:, :arr.shape[1]//2, :], height=height,width=width, dh=dh, dw=dw, big_dict=big_dict,frame_count=frame_count, i=i)
+        one_eye_box_cropping(arr=arr[:, -arr.shape[1]//2:, :], height=height,width=width, dh=dh, dw=dw, big_dict=big_dict,frame_count=frame_count, i=i, right=True)
+        print(i)
+    
+    for (a, b) in big_dict:
+        arr = big_dict[(a,b)]
+        a, b = a / (arr_shape[0] / 2) * 180, b / (arr_shape[1]) * 360
+        np.save(save_path + video_name + "/centering_at_row_degree_%.1f"%a + "_col_degree_%.1f"%b, arr)
+        print("saved for ", a, b)
 
     print("done for ", video_name)
-
+ 
 if __name__ == "__main__":
-    print("before main")
-#    main_average()
-    individual_avg("gardens")
-#   individual("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/original_videos/gardens.mp4", "gardens")
+    video_names = ['sharks', 'ship', 'skyhouse']
+    for video_name in video_names:
+        video_path = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/original_optical_flow/"+ video_name + "/"
+        of_count = len([name for name in os.listdir(video_path) if os.path.isfile(os.path.join(video_path, name))])
+        individual_avg(path=video_path, video_name=video_name, save_path="./original_boxed_of_center/", frame_count=of_count) 

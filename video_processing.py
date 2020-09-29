@@ -11,11 +11,11 @@ def frame_capture(path, video):
 
     # Used as counter variable
     count = 0
-    if not os.path.exists(video+"_frames"):
-        os.mkdir(video+"_frames")
+    if not os.path.exists("original-frames/" + video+"_frames"):
+        os.mkdir("original-frames/" + video+"_frames")
     else:
         print("did frame capture before")
-        return len(os.listdir(video + "_frames"))
+        return len(os.listdir("original-frames/" + video+"_frames"))
     # checks whether frames were extracted
     success = 1
 
@@ -25,7 +25,7 @@ def frame_capture(path, video):
         success, image = vidObj.read()
 
         # Saves the frames with frame-count
-        cv2.imwrite(video + "_frames/" + video+"%05d.jpeg" % count, image)
+        cv2.imwrite("original-frames/" + video + "_frames/" + video+"%05d.jpeg" % count, image)
 
         count += 1
         if count % 100 == 0:
@@ -33,7 +33,11 @@ def frame_capture(path, video):
 
     return count
 
-# Driver Code
 if __name__ == '__main__':
     # Calling the function
-    frame_capture("./test.mp4")
+    for root, dir, files in os.walk("/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/original_videos/"):
+        for file in files:
+            path = os.path.join(root, file)
+            name = file[:-4]
+            print(path, name)
+            frame_capture(path, video=name)

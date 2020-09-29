@@ -23,28 +23,6 @@ torch.set_grad_enabled(False) # make sure to not compute gradients for computati
 
 torch.backends.cudnn.enabled = True # make sure to use cudnn for computational performance
 
-##########################################################
-
-arguments_strModel = 'sintel-final'
-arguments_strFirst = './images/first.png'
-arguments_strSecond = './images/second.png'
-arguments_strOut = './out.flo'
-
-parser = argparse.ArgumentParser()
-parser.add_argument('-gpuid', nargs=1, type=str, default='0')  # python3 main.py -gpuid=1,2,3
-args = parser.parse_args()
-os.environ['CUDA_VISIBLE_DEVICES'] = args.gpuid[0]
-print(os.environ['CUDA_VISIBLE_DEVICES'])
-#
-# for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
-# 	if strOption == '--model' and strArgument != '': arguments_strModel = strArgument # which model to use, see below
-# 	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
-# 	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
-# 	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
-# end
-
-##########################################################
-
 Backward_tensorGrid = {}
 
 def Backward(tensorInput, tensorFlow):
@@ -106,7 +84,7 @@ class Network(torch.nn.Module):
 
 		self.moduleBasic = torch.nn.ModuleList([ Basic(intLevel) for intLevel in range(6) ])
 
-		self.load_state_dict(torch.load('./network-' + arguments_strModel + '.pytorch'))
+		self.load_state_dict(torch.load('./network-chairs-final.pytorch'))
 	# end
 
 	def forward(self, tensorFirst, tensorSecond):
@@ -215,7 +193,6 @@ def make_color_wheel():
     return colorwheel
 
 
-
 def compute_color(u, v):
 	"""
     compute optical flow color map
@@ -297,23 +274,6 @@ def plot_optical_flows(video, cap):
 
 
 if __name__ == '__main__':
-	# tensorFirst = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strFirst))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
-	# tensorSecond = torch.FloatTensor(numpy.array(PIL.Image.open(arguments_strSecond))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0))
-    #
-	# tensorOutput = estimate(tensorFirst, tensorSecond)
-	# tensorOutput = tensorOutput.numpy()
-	# print(np.sum(tensorOutput))
-	# # objectOutput = open(arguments_strOut, 'wb')
-    #
-	# numpy.array([ 80, 73, 69, 72 ], numpy.uint8).tofile(objectOutput)
-	# numpy.array([ tensorOutput.size(2), tensorOutput.size(1) ], numpy.int32).tofile(objectOutput)
-	# numpy.array(tensorOutput.numpy().transpose(1, 2, 0), numpy.float32).tofile(objectOutput)
-    #
-	# objectOutput.close()
-	# img = compute_color(tensorOutput[0], tensorOutput[1])
-	# print("sum is", np.sum(img))
-	# imsave("./test.png", img)
-#	imsave("./test2.png", tensorOutput[1])
 
 	# video_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/videos/"
 	# for root, dirs, files in os.walk(video_dir):
@@ -327,6 +287,29 @@ if __name__ == '__main__':
 	# 		print("Finished capturing frames, there are ", count, " frames in total for ", video)
 	# 		plot_optical_flows(video, count)
 
-	skyhouse_frames = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/skyhouse_frames/"
-	plot_optical_flows("skyhouse", 1802)
+	video_names = ['dotsouter', 'gardens', 'glowingdance', 'helicoptercrash', 'minecraft', 'sculptures', 
+					'sharks', 'ship', 'skyhouse', 'spacevisit', 'woodencoaster', 'cartoonroaster', 'dotsall', 'dunerovers', 
+					'oceancoaster', 'snowplanet']
+	for video_name in video_names:
+		video_frames = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/original-frames/" + video_name + "_frames/"
+		optical_flow_dir = "/usr/project/xtmp/ct214/daml/vr_sickness/pytorch-spynet/original_optical_flow/" + video_name + "/"
+		if not os.path.exists(video_frames):
+    			continue
+		if not os.path.exists(optical_flow_dir):
+    			os.makedirs(optical_flow_dir)
+		frame_count = len([name for name in os.listdir(video_frames) if os.path.isfile(os.path.join(video_frames, name))])
+		print(frame_count) 
+		tensorFirst = torch.FloatTensor(
+			np.array(PIL.Image.open(video_frames + video_name + "00000.jpeg"))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32)
+			* (1.0 / 255.0))
+		for i in range(1, frame_count-1): 
+			tensorSecond = torch.FloatTensor(
+				np.array(PIL.Image.open(video_frames + video_name + "%05d" % i + ".jpeg"))[:, :, ::-1].transpose(2, 0, 1).astype(np.float32) * (
+				1.0 / 255.0))
+			tensorOutput = estimate(tensorFirst, tensorSecond)
+			tensorOutput = tensorOutput.numpy()
+			np.save(optical_flow_dir + str(i), tensorOutput)
+			if i % 100==0:
+				print("finished comparing frame " + str(i) + " video " + video_name)
+			tensorFirst = tensorSecond
 
