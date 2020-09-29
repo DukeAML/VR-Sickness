@@ -5,3 +5,7 @@
 /__pycache__/
 *.png
 /*/
+*.out
+*.sh
+*.bash
+*.npy
